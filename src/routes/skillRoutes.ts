@@ -6,10 +6,11 @@ const router = Router();
 
 // Public route: Anyone can browse
 router.get('/', getSkills);
+router.get('/my-skills', protect, getMySkills);
 router.get('/:id', getSkillById);
 
 // Protected route: Only logged-in users can post a skill
 router.post('/', protect, createSkill);
-router.get('/my-skills', protect, getMySkills);
+
 
 export default router;
