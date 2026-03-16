@@ -1,59 +1,58 @@
 import type { Request, Response } from 'express';
 import { Skill } from '../models/Skill.js';
 
-// @desc    Get all skills (Public Marketplace)
-export const getSkills = async (req: Request, res: Response): Promise<void> => {
+// @desc    Get ONLY the logged-in provider's skills
+export const getMySkills = async (req: Request, res: Response): Promise<void> => {
   try {
-    const skills = await Skill.find().populate('provider', 'name email');
+    const userId = (req as any).user._id; 
+    // Find skills where the provider field matches the ID from the token
+    const skills = await Skill.find({ provider: userId }).sort({ createdAt: -1 });
     res.status(200).json(skills);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching skills" });
+    res.status(500).json({ message: "Error fetching your skills" });
   }
 };
 
-// @desc    Get ONLY the logged-in provider's skills (Private Dashboard)
-export const getMySkills = async (req: Request, res: Response): Promise<void> => {
+// @desc    Create a new skill (Auto-links to logged-in User)
+export const createSkill = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = (req as any).user;
-    if (!user) {
-      res.status(401).json({ message: "Not authorized, no user found" });
+    const { title, description, category, price, availability } = req.body;
+    
+    // We get the provider ID strictly from the auth middleware (req.user)
+    const providerId = (req as any).user._id;
+
+    if (!title || !price || !category) {
+      res.status(400).json({ message: "Please provide all required fields" });
       return;
     }
 
-    const skills = await Skill.find({ provider: user._id }).populate('provider', 'name email');
-    res.status(200).json(skills);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching your specific skills" });
-  }
-};
-
-// @desc    Create a new skill (Private - Provider only)
-export const createSkill = async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { title, description, category, price } = req.body;
     const newSkill = await Skill.create({
-      provider: (req as any).user._id, 
+      provider: providerId, // This links it to Anshu Dalal's ID
       title,
       description,
       category,
-      price
+      price,
+      availability: availability || "Available"
     });
+
     res.status(201).json(newSkill);
   } catch (error) {
-    res.status(400).json({ message: "Error creating skill" });
+    res.status(400).json({ message: "Failed to create skill. Check data types." });
   }
 };
 
-// @desc    Get single skill by ID (Public)
-export const getSkillById = async (req: Request, res: Response): Promise<void> => {
+// @desc    Other standard controllers
+export const getSkills = async (req: Request, res: Response) => {
+  const skills = await Skill.find().populate('provider', 'name email');
+  res.status(200).json(skills);
+};
+
+export const getSkillById = async (req: Request, res: Response) => {
   try {
     const skill = await Skill.findById(req.params.id).populate('provider', 'name email');
-    if (!skill) {
-      res.status(404).json({ message: "Skill not found" });
-      return;
-    }
+    if (!skill) return res.status(404).json({ message: "Not found" });
     res.status(200).json(skill);
   } catch (error) {
-    res.status(400).json({ message: "Invalid Skill ID format" });
+    res.status(400).json({ message: "Invalid ID" });
   }
 };
