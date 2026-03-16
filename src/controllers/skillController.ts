@@ -47,3 +47,17 @@ export const getSkillById = async (req: Request, res: Response): Promise<void> =
     res.status(400).json({ message: "Invalid Skill ID" });
   }
 };
+
+// @desc    Get ONLY the logged-in provider's skills (Private - Provider Dashboard)
+export const getMySkills = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // We filter by the provider ID stored in the token (attached by auth middleware)
+    const providerId = (req as any).user._id; 
+    
+    const skills = await Skill.find({ provider: providerId }).populate('provider', 'name email');
+    
+    res.status(200).json(skills);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching your skills" });
+  }
+};
