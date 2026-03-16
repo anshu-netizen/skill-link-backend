@@ -3,13 +3,14 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import authRoutes from './routes/authRoutes.js'; 
-import skillRoutes from './routes/skillRoutes.js'
+import skillRoutes from './routes/skillRoutes.js';
 
 dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: 'https://skill-link-frontend-rouge.vercel.app',
+  // FIX: Wrap multiple origins in an array
+  origin: ['https://skill-link-frontend-rouge.vercel.app', 'http://localhost:3000'],
   credentials: true
 }));
 app.use(express.json());
