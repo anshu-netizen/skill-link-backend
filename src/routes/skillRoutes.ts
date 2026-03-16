@@ -4,13 +4,10 @@ import { protect } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// Public route: Anyone can browse
-router.get('/', getSkills);
-router.get('/my-skills', protect, getMySkills);
-router.get('/:id', getSkillById);
+router.get('/', getSkills); // Public
+router.get('/my-skills', protect, getMySkills); // Private (MUST be above /:id)
+router.get('/:id', getSkillById); // Public/Dynamic
 
-// Protected route: Only logged-in users can post a skill
-router.post('/', protect, createSkill);
-
+router.post('/', protect, createSkill); // Private
 
 export default router;
