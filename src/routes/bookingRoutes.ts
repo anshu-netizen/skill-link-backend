@@ -6,6 +6,7 @@ import {
   getProviderJobs 
 } from '../controllers/bookingController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { createReview, getProviderReviews } from '../controllers/reviewController.js';
 import { isSeeker } from '../middleware/roleMiddleware.js';
 
 const router = Router();
@@ -19,6 +20,16 @@ router.get('/my-requests', isSeeker, getMyRequests);  // View history
 router.patch('/:id/cancel', cancelBooking); // Cancel
 
 // Provider Routes
-router.get('/my-jobs', getProviderJobs);    // View jobs assigned to me
+router.get('/my-jobs', getProviderJobs);    
+
+
+
+// ... existing booking routes
+
+// Seeker posts a review
+router.post('/reviews', protect, isSeeker, createReview);
+
+// Public can see provider reviews
+router.get('/reviews/provider/:providerId', getProviderReviews);
 
 export default router;
