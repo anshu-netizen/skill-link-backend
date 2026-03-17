@@ -82,3 +82,59 @@ export const getProviderJobs = async (req: Request, res: Response): Promise<void
     res.status(500).json({ message: "Error fetching jobs." });
   }
 };
+
+// @desc    Provider: Accept a pending booking
+// @route   PATCH /api/bookings/:id/accept
+export const acceptBooking = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      res.status(404).json({ message: "Booking not found." });
+      return;
+    }
+
+    // AUTH CHECK: Ensure only the assigned provider can accept
+    if (booking.provider.toString() !== (req as any).user._id) {
+      res.status(401).json({ message: "Unauthorized: This job is not assigned to you." });
+      return;
+    }
+
+    booking.status = 'accepted';
+    await booking.save();
+    res.status(200).json({ message: "Booking accepted.", booking });
+  } catch (error) {
+    res.status(500).json({ message: "Server error." });
+  }
+};
+
+// @desc    Provider: Mark a job as finished/completed
+// @route   PATCH /api/bookings/:id/complete
+export const completeBooking = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+
+    if (!booking) {
+      res.status(404).json({ message: "Booking not found." });
+      return;
+    }
+
+    // AUTH CHECK: Only the provider can mark it complete
+    if (booking.provider.toString() !== (req as any).user._id) {
+      res.status(401).json({ message: "Unauthorized." });
+      return;
+    }
+
+    // LOGIC CHECK: Can't complete a job that hasn't been accepted yet
+    if (booking.status !== 'accepted') {
+      res.status(400).json({ message: "You must 'accept' the booking before marking it as complete." });
+      return;
+    }
+
+    booking.status = 'completed';
+    await booking.save();
+    res.status(200).json({ message: "Job marked as completed. The seeker can now review you.", booking });
+  } catch (error) {
+    res.status(500).json({ message: "Server error." });
+  }
+};

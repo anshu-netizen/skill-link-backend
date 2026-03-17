@@ -3,7 +3,9 @@ import {
   createBooking, 
   getMyRequests, 
   cancelBooking, 
-  getProviderJobs 
+  getProviderJobs, 
+  acceptBooking,
+  completeBooking
 } from '../controllers/bookingController.js';
 import { protect } from '../middleware/authMiddleware.js';
 import { createReview, getProviderReviews } from '../controllers/reviewController.js';
@@ -20,7 +22,9 @@ router.get('/my-requests', isSeeker, getMyRequests);  // View history
 router.patch('/:id/cancel', cancelBooking); // Cancel
 
 // Provider Routes
-router.get('/my-jobs', getProviderJobs);    
+router.get('/my-jobs', getProviderJobs);   
+router.patch('/:id/accept', protect, acceptBooking);
+router.patch('/:id/complete', protect, completeBooking); 
 
 
 
