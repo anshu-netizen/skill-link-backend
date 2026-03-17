@@ -86,3 +86,80 @@ export const getSkillById = async (req: Request, res: Response): Promise<void> =
     res.status(400).json({ message: "Invalid Skill ID format" });
   }
 };
+
+// @desc    Update a skill (Title, Description, Price)
+// @route   PATCH /api/skills/:id
+export const updateSkill = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { title, description, price } = req.body;
+    const skill = await Skill.findById(req.params.id);
+
+    if (!skill) {
+      res.status(404).json({ message: "Skill not found" });
+      return;
+    }
+
+    // AUTH CHECK: Ensure the logged-in user owns this skill
+    if (skill.provider.toString() !== (req as any).user._id) {
+      res.status(401).json({ message: "Not authorized to update this skill" });
+      return;
+    }
+
+    skill.title = title || skill.title;
+    skill.description = description || skill.description;
+    skill.price = price || skill.price;
+
+    const updatedSkill = await skill.save();
+    res.status(200).json(updatedSkill);
+  } catch (error) {
+    res.status(400).json({ message: "Invalid data provided" });
+  }
+};
+
+// @desc    Toggle availability (Available vs Busy)
+// @route   PATCH /api/skills/:id/status
+export const toggleSkillStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { availability } = req.body; // Expecting "Available" or "Busy"
+    const skill = await Skill.findById(req.params.id);
+
+    if (!skill) {
+      res.status(404).json({ message: "Skill not found" });
+      return;
+    }
+
+    if (skill.provider.toString() !== (req as any).user._id) {
+      res.status(401).json({ message: "Not authorized" });
+      return;
+    }
+
+    skill.availability = availability;
+    await skill.save();
+    res.status(200).json({ message: `Status updated to ${availability}`, skill });
+  } catch (error) {
+    res.status(400).json({ message: "Error updating status" });
+  }
+};
+
+// @desc    Delete a skill
+// @route   DELETE /api/skills/:id
+export const deleteSkill = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const skill = await Skill.findById(req.params.id);
+
+    if (!skill) {
+      res.status(404).json({ message: "Skill not found" });
+      return;
+    }
+
+    if (skill.provider.toString() !== (req as any).user._id) {
+      res.status(401).json({ message: "Not authorized to delete this skill" });
+      return;
+    }
+
+    await skill.deleteOne();
+    res.status(200).json({ message: "Skill removed successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error during deletion" });
+  }
+};
