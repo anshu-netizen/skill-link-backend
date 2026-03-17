@@ -2,11 +2,20 @@ import type { Request, Response } from 'express';
 import { Skill } from '../models/Skill.js';
 
 // @desc    Get ONLY the logged-in provider's skills
+// @access  Private (Provider Dashboard)
 export const getMySkills = async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = (req as any).user._id; 
-    // Find skills where the provider field matches the ID from the token
+    // Automatically knows who you are because of the 'protect' middleware
+    const userId = (req as any).user?._id; 
+
+    if (!userId) {
+      res.status(401).json({ message: "User not identified" });
+      return;
+    }
+
+    // Filters the DB: "Show me skills where provider == my ID"
     const skills = await Skill.find({ provider: userId }).sort({ createdAt: -1 });
+    
     res.status(200).json(skills);
   } catch (error) {
     res.status(500).json({ message: "Error fetching your skills" });
@@ -14,20 +23,28 @@ export const getMySkills = async (req: Request, res: Response): Promise<void> =>
 };
 
 // @desc    Create a new skill (Auto-links to logged-in User)
+// @access  Private
 export const createSkill = async (req: Request, res: Response): Promise<void> => {
   try {
     const { title, description, category, price, availability } = req.body;
     
-    // We get the provider ID strictly from the auth middleware (req.user)
-    const providerId = (req as any).user._id;
+    // Automatically grabs Anshu Dalal's ID from the token
+    const providerId = (req as any).user?._id;
 
-    if (!title || !price || !category) {
-      res.status(400).json({ message: "Please provide all required fields" });
+    if (!providerId) {
+      res.status(401).json({ message: "Unauthorized: Missing user context" });
       return;
     }
 
+    // Basic Validation
+    if (!title || !price || !category) {
+      res.status(400).json({ message: "Please provide title, price, and category" });
+      return;
+    }
+
+    // Save to Database
     const newSkill = await Skill.create({
-      provider: providerId, // This links it to Anshu Dalal's ID
+      provider: providerId, // This is the '69b6aef2...' ID
       title,
       description,
       category,
@@ -37,22 +54,35 @@ export const createSkill = async (req: Request, res: Response): Promise<void> =>
 
     res.status(201).json(newSkill);
   } catch (error) {
-    res.status(400).json({ message: "Failed to create skill. Check data types." });
+    console.error("Create Skill Error:", error);
+    res.status(400).json({ message: "Failed to create skill. Check database connection." });
   }
 };
 
-// @desc    Other standard controllers
-export const getSkills = async (req: Request, res: Response) => {
-  const skills = await Skill.find().populate('provider', 'name email');
-  res.status(200).json(skills);
+// @desc    Get all skills (Public Marketplace)
+// @access  Public
+export const getSkills = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const skills = await Skill.find().populate('provider', 'name email');
+    res.status(200).json(skills);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching marketplace skills" });
+  }
 };
 
-export const getSkillById = async (req: Request, res: Response) => {
+// @desc    Get single skill by ID
+// @access  Public
+export const getSkillById = async (req: Request, res: Response): Promise<void> => {
   try {
     const skill = await Skill.findById(req.params.id).populate('provider', 'name email');
-    if (!skill) return res.status(404).json({ message: "Not found" });
+    
+    if (!skill) {
+      res.status(404).json({ message: "Skill not found" });
+      return;
+    }
+
     res.status(200).json(skill);
   } catch (error) {
-    res.status(400).json({ message: "Invalid ID" });
+    res.status(400).json({ message: "Invalid Skill ID format" });
   }
 };
