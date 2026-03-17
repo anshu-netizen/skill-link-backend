@@ -6,6 +6,7 @@ import {
   getProviderJobs 
 } from '../controllers/bookingController.js';
 import { protect } from '../middleware/authMiddleware.js';
+import { isSeeker } from '../middleware/roleMiddleware.js';
 
 const router = Router();
 
@@ -13,8 +14,8 @@ const router = Router();
 router.use(protect);
 
 // Seeker Routes
-router.post('/', createBooking);            // Hire
-router.get('/my-requests', getMyRequests);  // View history
+router.post('/', isSeeker, createBooking);            // Hire
+router.get('/my-requests', isSeeker, getMyRequests);  // View history
 router.patch('/:id/cancel', cancelBooking); // Cancel
 
 // Provider Routes
