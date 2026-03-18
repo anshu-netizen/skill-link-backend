@@ -7,6 +7,9 @@ interface ISkill {
   category: string;
   price: number;
   availability: string;
+  images: string[];    // New: For professional gallery
+  location: string;  // New: For the Explore page info
+  tags: string[];      // New: For better searchability
 }
 
 const skillSchema = new Schema<ISkill>({
@@ -15,6 +18,9 @@ const skillSchema = new Schema<ISkill>({
   description: { type: String, required: true },
   category: { type: String, required: true },
   price: { type: Number, required: true },
+  images: [{ type: String }], // Array of strings for URLs
+  location: { type: String, default: 'Remote' },
+  tags: [{ type: String }],
   availability: { type: String, default: 'Available' }
 }, { timestamps: true });
 

@@ -1,25 +1,50 @@
 import type { Request, Response } from 'express';
 import { Booking } from '../models/Booking.js';
 
-// @desc    Seeker hires a provider
+
 export const createBooking = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { skillId, providerId, scheduledDate, totalPrice, message } = req.body;
-    const seekerId = (req as any).user._id;
+    const { skillId, providerId, appointmentTime, totalPrice, message, location } = req.body;
+    const seekerId = (req as any).user?._id;
 
-    const booking = await Booking.create({
+    const requestedTime = new Date(appointmentTime);
+    
+    // --- 1-HOUR BUFFER LOGIC ---
+    // Calculate the "Danger Zone" (60 mins before to 60 mins after)
+    const buffer = 60 * 60 * 1000; 
+    const rangeStart = new Date(requestedTime.getTime() - buffer);
+    const rangeEnd = new Date(requestedTime.getTime() + buffer);
+
+    const conflict = await Booking.findOne({
+      provider: providerId,
+      status: { $in: ['pending', 'accepted'] }, // Ignore cancelled/rejected
+      appointmentTime: {
+        $gte: rangeStart,
+        $lte: rangeEnd
+      }
+    });
+
+    if (conflict) {
+      res.status(409).json({ 
+        message: "Schedule Conflict: Provider has a booking within 1 hour of this time." 
+      });
+      return;
+    }
+    // ----------------------------
+
+    const newBooking = await Booking.create({
       seeker: seekerId,
       provider: providerId,
       skill: skillId,
-      scheduledDate,
+      appointmentTime: requestedTime,
       totalPrice,
       message,
-      status: 'pending'
+      location
     });
 
-    res.status(201).json(booking);
+    res.status(201).json(newBooking);
   } catch (error) {
-    res.status(400).json({ message: "Booking failed. Ensure all fields are valid." });
+    res.status(500).json({ message: "Error processing booking" });
   }
 };
 

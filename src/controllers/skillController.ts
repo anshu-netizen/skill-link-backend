@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { Skill } from '../models/Skill.js';
+import cloudinary from '../config/cloudinary.js';
 
 // @desc    Get ONLY the logged-in provider's skills
 // @access  Private (Provider Dashboard)
@@ -24,11 +25,14 @@ export const getMySkills = async (req: Request, res: Response): Promise<void> =>
 
 // @desc    Create a new skill (Auto-links to logged-in User)
 // @access  Private
+// @desc    Create a new skill
+// @access  Private
+
+// @desc    Create a new skill with Cloudinary Images
+// @access  Private
 export const createSkill = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { title, description, category, price, availability } = req.body;
-    
-    // Automatically grabs Anshu Dalal's ID from the token
+    const { title, description, category, price, availability, images, location, tags } = req.body;
     const providerId = (req as any).user?._id;
 
     if (!providerId) {
@@ -36,26 +40,38 @@ export const createSkill = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Basic Validation
-    if (!title || !price || !category) {
-      res.status(400).json({ message: "Please provide title, price, and category" });
-      return;
+    // 1. UPLOAD IMAGES TO CLOUDINARY
+    let uploadedImageUrls: string[] = [];
+    
+    if (images && Array.isArray(images) && images.length > 0) {
+      // We use Promise.all to upload all images simultaneously for speed
+      uploadedImageUrls = await Promise.all(
+        images.map(async (image) => {
+          const result = await cloudinary.uploader.upload(image, {
+            folder: 'skills_marketplace', // Organizes images in your Cloudinary dashboard
+          });
+          return result.secure_url; // This is the permanent HTTPS link
+        })
+      );
     }
 
-    // Save to Database
+    // 2. SAVE TO DATABASE (Using your exact logic + new fields)
     const newSkill = await Skill.create({
-      provider: providerId, // This is the '69b6aef2...' ID
+      provider: providerId,
       title,
       description,
       category,
       price,
+      images: uploadedImageUrls, // Saving the Cloudinary URLs here
+      location: location || "Remote",
+      tags: tags || [],
       availability: availability || "Available"
     });
 
     res.status(201).json(newSkill);
   } catch (error) {
-    console.error("Create Skill Error:", error);
-    res.status(400).json({ message: "Failed to create skill. Check database connection." });
+    console.error("Cloudinary/Create Error:", error);
+    res.status(400).json({ message: "Failed to create skill with images." });
   }
 };
 
@@ -143,6 +159,7 @@ export const toggleSkillStatus = async (req: Request, res: Response): Promise<vo
 
 // @desc    Delete a skill
 // @route   DELETE /api/skills/:id
+// @desc    Delete a skill and its Cloudinary images
 export const deleteSkill = async (req: Request, res: Response): Promise<void> => {
   try {
     const skill = await Skill.findById(req.params.id);
@@ -153,12 +170,23 @@ export const deleteSkill = async (req: Request, res: Response): Promise<void> =>
     }
 
     if (skill.provider.toString() !== (req as any).user._id) {
-      res.status(401).json({ message: "Not authorized to delete this skill" });
+      res.status(401).json({ message: "Not authorized" });
       return;
     }
 
+    // DELETE FROM CLOUDINARY
+    if (skill.images && skill.images.length > 0) {
+      await Promise.all(
+        skill.images.map(async (url) => {
+          // Extracts the Public ID from the URL to tell Cloudinary what to delete
+          const publicId = url.split('/').pop()?.split('.')[0];
+          if (publicId) await cloudinary.uploader.destroy(`skills_marketplace/${publicId}`);
+        })
+      );
+    }
+
     await skill.deleteOne();
-    res.status(200).json({ message: "Skill removed successfully" });
+    res.status(200).json({ message: "Skill and images removed successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error during deletion" });
   }
