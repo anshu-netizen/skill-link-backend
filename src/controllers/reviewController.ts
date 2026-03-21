@@ -3,12 +3,13 @@ import { Review } from '../models/Review.js';
 import { Booking } from '../models/Booking.js';
 
 // @desc    Create a review for a completed job
+// @route   POST /api/bookings/reviews
 export const createReview = async (req: Request, res: Response): Promise<void> => {
   try {
     const { bookingId, rating, comment } = req.body;
     const seekerId = (req as any).user._id;
 
-    // 1. Find the booking
+    // 1. Validate Booking Existence
     const booking = await Booking.findById(bookingId);
 
     if (!booking) {
@@ -16,15 +17,18 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
       return;
     }
 
-    // 2. Security: Only the seeker who made the booking can review it
-    if (booking.seeker.toString() !== seekerId.toString()) {
-      res.status(403).json({ message: "Unauthorized: You did not book this service." });
+    // 2. LOGIC CHECK: Must be 'completed'
+    // If you get 400, verify in Atlas/Compass that status is exactly 'completed'
+    if (booking.status !== 'completed') {
+      res.status(400).json({ 
+        message: `Cannot review. Booking status is '${booking.status}', must be 'completed'.` 
+      });
       return;
     }
 
-    // 3. Logic: Can only review completed jobs
-    if (booking.status !== 'completed') {
-      res.status(400).json({ message: "You can only review a service after it is marked as completed." });
+    // 3. SECURITY CHECK: Only the seeker who booked it can review
+    if (booking.seeker.toString() !== seekerId.toString()) {
+      res.status(403).json({ message: "Unauthorized: You did not make this booking." });
       return;
     }
 
@@ -38,33 +42,30 @@ export const createReview = async (req: Request, res: Response): Promise<void> =
       comment
     });
 
-    // 5. CRITICAL: Update the Booking to reference this review
-    // This allows your frontend's !booking.review check to work correctly
+    // 5. CRITICAL LINK: Update the Booking record
+    // This makes booking.review truthy so the frontend hides the button
     booking.review = review._id;
     await booking.save();
 
-    // 6. Return populated review for immediate UI feedback
-    const populatedReview = await Review.findById(review._id)
-      .populate('provider', 'name email')
-      .populate('skill', 'title')
-      .populate('booking', 'totalPrice status');
-
-    res.status(201).json(populatedReview);
+    res.status(201).json(review);
 
   } catch (error: any) {
+    // Handle Duplicate Review (Unique Index on bookingId in Review Model)
     if (error.code === 11000) {
       res.status(400).json({ message: "You have already reviewed this booking." });
     } else {
       console.error("Review Error:", error);
-      res.status(500).json({ message: "Error submitting review." });
+      res.status(500).json({ message: "Internal server error while saving review." });
     }
   }
 };
 
 // @desc    Get all reviews for a specific provider
+// @route   GET /api/bookings/reviews/provider/:providerId
 export const getProviderReviews = async (req: Request, res: Response): Promise<void> => {
   try {
-    const reviews = await Review.find({ provider: req.params.providerId })
+    const { providerId } = req.params;
+    const reviews = await Review.find({ provider: providerId })
       .populate('seeker', 'name')
       .populate('skill', 'title')
       .sort({ createdAt: -1 });

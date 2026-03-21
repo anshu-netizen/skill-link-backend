@@ -56,7 +56,7 @@ export const getMyRequests = async (req: Request, res: Response): Promise<void> 
     const requests = await Booking.find({ seeker: seekerId })
       .populate('provider', 'name email')
       .populate('skill', 'title category price')
-      // --- CRITICAL: ADD THIS POPULATE ---
+      // This is the most important line for the frontend UI toggle
       .populate('review') 
       .sort({ createdAt: -1 });
 
