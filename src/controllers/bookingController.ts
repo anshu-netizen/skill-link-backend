@@ -49,12 +49,15 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
 };
 
 // @desc    Seeker views their own hire history
+// @desc    Seeker views their own hire history
 export const getMyRequests = async (req: Request, res: Response): Promise<void> => {
   try {
     const seekerId = (req as any).user._id;
     const requests = await Booking.find({ seeker: seekerId })
       .populate('provider', 'name email')
       .populate('skill', 'title category price')
+      // --- CRITICAL: ADD THIS POPULATE ---
+      .populate('review') 
       .sort({ createdAt: -1 });
 
     res.status(200).json(requests);

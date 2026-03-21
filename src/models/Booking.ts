@@ -9,11 +9,19 @@ const bookingSchema = new mongoose.Schema({
     enum: ['pending', 'accepted', 'rejected', 'completed', 'cancelled'], 
     default: 'pending' 
   },
-  appointmentTime: { type: Date, required: true }, // Replaces scheduledDate
-  duration: { type: Number, default: 60 },        // Duration in minutes
+  appointmentTime: { type: Date, required: true },
+  duration: { type: Number, default: 60 },
   totalPrice: { type: Number, required: true },
   message: { type: String },
-  location: { type: String }
+  location: { type: String },
+  
+  // --- ADD THIS FIELD ---
+  // This allows you to populate the review data when fetching bookings
+  review: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Review', 
+    default: null 
+  }
 }, { timestamps: true });
 
 // Index for high-performance scheduling queries
