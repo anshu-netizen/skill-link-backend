@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 import authRoutes from './routes/authRoutes.js'; 
 import skillRoutes from './routes/skillRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
-import userRoutes from './routes/bookingRoutes.js'
+import userRoutes from './routes/userRoutes.js'
 
 dotenv.config();
 const app = express();
